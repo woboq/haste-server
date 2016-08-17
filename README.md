@@ -46,6 +46,16 @@ STDOUT.  Check the README there for more details and usages.
 * `storage` - storage options (see below)
 * `logging` - logging preferences
 * `keyGenerator` - key generator options (see below)
+* `rateLimits` - settings for rate limiting (see below)
+
+## Rate Limiting
+
+When present, the `rateLimits` option enables built-in rate limiting courtesy
+of `connect-ratelimit`.  Any of the options supported by that library can be
+used and set in `config.json`.
+
+See the README for [connect-ratelimit](https://github.com/dharmafly/connect-ratelimit)
+for more information!
 
 ## Key Generation
 
@@ -91,7 +101,7 @@ Where `path` represents where you want the files stored
 
 ### Redis
 
-To use redis storage you must install the redis package in npm
+To use redis storage you must install the `redis` package in npm
 
 `npm install redis`
 
@@ -105,6 +115,33 @@ Once you've done that, your config section should look like:
   "db": 2
 }
 ```
+
+You can also set an `expire` option to the number of seconds to expire keys in.
+This is off by default, but will constantly kick back expirations on each view
+or post.
+
+All of which are optional except `type` with very logical default values.
+
+### Postgres
+
+To use postgres storage you must install the `pg` package in npm
+
+`npm install pg`
+
+Once you've done that, your config section should look like:
+
+``` json
+{
+  "type": "postgres",
+  "connectionUrl": "postgres://user:password@host:5432/database"
+}
+```
+
+You can also just set the environment variable for `DATABASE_URL` to your database connection url.
+
+You will have to manually add a table to your postgres database:
+
+`create table entries (id serial primary key, key varchar(255) not null, value text not null, expiration int, unique(key));`
 
 You can also set an `expire` option to the number of seconds to expire keys in.
 This is off by default, but will constantly kick back expirations on each view
