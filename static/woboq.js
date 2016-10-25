@@ -142,18 +142,25 @@ if (!popup) {
         document.body.appendChild(popup);
 }
 var hideTimer = 0;
-function resetPopupHideTimer() {
-    // start/reset timer to 3 sec
+function clearPopupHideTimer() {
     if (hideTimer > 0) {
         window.clearTimeout(hideTimer);
     }
-    hideTimer = window.setTimeout(closePopup, 5000);
 }
-popup.addEventListener( 'mousemove', function (event) {
+function resetPopupHideTimer() {
+    // start/reset timer to 3 sec
+    clearPopupHideTimer();
+    hideTimer = window.setTimeout(closePopup, 3000);
+}
+popup.addEventListener( 'mouseleave', function (event) {
     resetPopupHideTimer();
 });
+popup.addEventListener( 'mouseenter', function (event) {
+    clearPopupHideTimer();
+});
 
-function createPopupHtml(pos, content) {
+
+    function createPopupHtml(pos, content) {
     return "<div style='"
         +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
         +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
