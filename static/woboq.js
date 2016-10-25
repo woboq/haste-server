@@ -8,10 +8,11 @@
 // @grant          none
 // ==/UserScript==
 
-(function(){
+window.addEventListener('load', function(){
 "use strict";
 
 // Config options
+var codeDiv = document.getElementById("box");
 var root_path = "https://code.woboq.org/";
 var default_project = "qt5";
 var api_path = "https://code.woboq.org/api/";
@@ -21,53 +22,55 @@ var symbol_path = "https://code.woboq.org/data/symbol.html?root=../qt5&ref="; //
 //-----------------------------------------------------------------------------
 // Utility functions
 
-function escapeRegExp(string) {
-    return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
-}
+// function escapeRegExp(string) {
+//     return string.replace(/([.*+?^=!:${}()|\[\]\/\\])/g, "\\$1");
+// }
 
 function escapeHtml(string) {
     return string.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
         .replace(/"/g, "&quot;").replace(/'/g, "&apos;");
 }
 
-function unescapeHtml(string) {
-    return string.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
-        .replace(/&quot;/g, '"').replace(/&apos;/g, "&apos;").replace(/&amp;/g, "&");
-}
+// function unescapeHtml(string) {
+//     return string.replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+//         .replace(/&quot;/g, '"').replace(/&apos;/g, "&apos;").replace(/&amp;/g, "&");
+// }
 
-function hasClass(elem, className) {
-    return elem.className.split(' ').indexOf(className) > -1;
-}
+// function hasClass(elem, className) {
+//     return elem.className.split(' ').indexOf(className) > -1;
+// }
 
 // Get the hash of a function for the lookup  (copied from codebrowser.js)
-function getFnNameKey(request) {
-    if (request.indexOf('/') != -1 || request.indexOf('.') != -1)
-        return false;
-    var mx = request.match(/::([^:]{2})[^:]*$/);
-    if (mx)
-        return mx[1].toLowerCase().replace(/[^a-z]/, '_');
-    request = request.replace(/^:*/, "");
-    if (request.length < 2)
-        return false;
-    var k = request.substr(0, 2).toLowerCase();
-    return k.replace(/[^a-z]/, '_');
-}
+// function getFnNameKey(request) {
+//     if (request.indexOf('/') != -1 || request.indexOf('.') != -1)
+//         return false;
+//     var mx = request.match(/::([^:]{2})[^:]*$/);
+//     if (mx)
+//         return mx[1].toLowerCase().replace(/[^a-z]/, '_');
+//     request = request.replace(/^:*/, "");
+//     if (request.length < 2)
+//         return false;
+//     var k = request.substr(0, 2).toLowerCase();
+//     return k.replace(/[^a-z]/, '_');
+// }
 
 // return absolude position of a dom node (in a object with 'top' and 'left'  properties)
-function getAbsolutePos(elem) {
-    var left = 0;
-    var top = 0;
-    while (elem) {
-        left += elem.offsetLeft;
-        top += elem.offsetTop;
-        elem = elem.offsetParent;
-    }
-    return {top: top,left: left};
-}
+// function getAbsolutePos(elem) {
+//     var left = 0;
+//     var top = 0;
+//     while (elem) {
+//         left += elem.offsetLeft;
+//         top += elem.offsetTop;
+//         elem = elem.offsetParent;
+//     }
+//     return {top: top,left: left};
+// }
+
 
 function getTooltipPos(event) {
     return {top: event.clientY,left: event.clientX};
 }
+
 
 //-----------------------------------------------------------------------------
 // Popup
@@ -76,13 +79,31 @@ var curentFnName = ""; // the fnName for which the popup is shown or that we are
 var currentXmlHttpRequest = null;
 
 
+var popup = document.getElementById('woboq_popup');
+if (!popup) {
+        popup = document.createElement('div');
+        popup.id = 'woboq_popup';
+        document.body.appendChild(popup);
+}
+var hideTimer = 0;
+function resetPopupHideTimer() {
+    // start/reset timer to 3 sec
+    if (hideTimer > 0) {
+        window.clearTimeout(hideTimer);
+    }
+    hideTimer = window.setTimeout(closePopup, 5000);
+}
+popup.addEventListener( 'mousemove', function (event) {
+    resetPopupHideTimer();
+});
+
 function createPopupHtml(pos, content) {
     return "<div style='"
         +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
         +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
         +"max-width: 80%; box-shadow:1px 1px 7px gray; z-index:2;"
         +"overflow-y:auto; max-height: 300px;"
-        +"position: fixed;"
+        +"position: absolute;"
         +"top:" + (pos.top) + "px;"
         +"left:"+ (pos.left) +"px;"
         +"'>" + content + "</div>";
@@ -90,8 +111,8 @@ function createPopupHtml(pos, content) {
 
 function closePopup() {
     curentFnName = "";
-    if (currentXmlHttpRequest)
-        currentXmlHttpRequest.abort();
+    //if (currentXmlHttpRequest)
+    //    currentXmlHttpRequest.abort(); // FIXME shall we really? isn't it better to cache?
     var popup = document.getElementById('woboq_popup');
     if (popup && popup.hasChildNodes())
         popup.removeChild(popup.childNodes[0]);
@@ -137,19 +158,14 @@ function showRefPopup(ref, pos, fnName, project) {
 
         if (url && type) {
             var popup = document.getElementById('woboq_popup');
-            if (!popup) {
-                popup = document.createElement('div');
-                popup.id = 'woboq_popup';
-                document.body.appendChild(popup);
-            }
-
-            var html = "";
+             var html = "";
             html += "<p style='color:#061'>" + escapeHtml(type) + "</p>";
             html += "<p><a style='color:#037' href='" + escapeHtml(url) + "'>Go to definition</a>";
 
             html += "<br /><a style='color:#037' href='" + escapeHtml(symbol_path + ref)
                 + "#uses'>Show uses (" + useCount + ")</a></p>";
             popup.innerHTML = createPopupHtml(pos, html);
+            resetPopupHideTimer();
         }
     };
     xhr.send();
@@ -188,63 +204,9 @@ function hoverFile(elem, file, project) {
 }
 */
 
-//helper regexp to find the def in the index
-var findDefRx = new RegExp("<def f='([^']*)' l='(\\d*)'(?: type='([^']*)')?[^/]*/>");
-
-//-----------------------------------------------------------------------------
-document.addEventListener('mouseover', function (event) {
-    if (event.target.woboq_done)
-        return;
-
-    // if (hasClass(event.target, 'diffTextFileHeader')) {
-    //     // Possile file name in a unified diff
-    //     var words = event.target.textContent.split(' ');
-    //     var file = "";
-    //     for (var i = 0; i < words.length; ++i) {
-    //         if (words[i].match(/^[ab]\/.*/))
-    //             file = words[i].substr(2).trim();
-    //     }
-    //     if (file.length > 0) {
-    //         hoverFile(event.target, file);
-    //     }
-    // } else if (hasClass(event.target, 'diffFileName') || hasClass(event.target, 'gwt-InlineLabel')) {
-    //     // file name
-    //     hoverFile(event.target, event.target.textContent);
-    // } else
-    //
-
-    // FIXME: i don't think we do this anymore
-    // if (event.target.tagName === "LI" && event.target.hasAttribute("data-ref")) {
-    //     console.log("HOVER OVER ENTRY IN OUR POPUP");
-    //     // Hovering over an entry in out popup: fetch from the index to add a link
-    //     var ref = event.target.getAttribute("data-ref");
-    //     var xhr = new XMLHttpRequest();
-    //     var project = project ? project : default_project;
-    //     var path =
-    //     xhr.open('GET', root_path + project + "/refs/" + ref);
-    //     xhr.onload = function() {
-    //         if (xhr.status !== 200)
-    //             return;
-    //         var mx = xhr.responseText.match(findDefRx);
-    //         if (mx) {
-    //             var proj = root_path.replace(/^.*\/([^\/]*)/, "$1");
-    //             var url = root_path + "/" + escapeHtml(mx[1]) + ".html#" + ref;
-    //             var html = "<a style='color:inherit' href='" + url + "'";
-    //             if (mx[3]) // mx[3] is already xml escaped, but re-do the escaping in case it's not
-    //                 html += " title='" + escapeHtml(unescapeHtml(mx[3])) + "'";
-    //             html += ">" + event.target.innerHTML + "</a>";
-    //             event.target.innerHTML = html;
-    //         }
-    //     };
-    //     xhr.send();
-    // }
-}, false );
-
-
-
 
 var woboq_previousMouseMove = "";
-document.addEventListener( 'mousemove', function (event) {
+codeDiv.addEventListener( 'mousemove', function (event) {
     if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
         return;
     if (event.target.woboq_done)
@@ -369,6 +331,7 @@ document.addEventListener( 'mousemove', function (event) {
         //closePopup();
     }
 
+    // FIXME decompose
     if (fnName.match(/[^a-zA-Z0-9_:]/))
         return;
 
@@ -378,7 +341,7 @@ document.addEventListener( 'mousemove', function (event) {
     var k = fnName;
     curentFnName = fnName;
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', api_path + "/fn/" + k);
+    xhr.open('GET', api_path + "fn/" + k);
     xhr.onload = function() {
         if (curentFnName !== fnName)
             return;
@@ -387,22 +350,9 @@ document.addEventListener( 'mousemove', function (event) {
             return;
 
         var possibilities = JSON.parse(xhr.response);
-        // var rx = new RegExp("(\\||::)"+ escapeRegExp(fnName) + "(\\(|$)", '');
-        // var lines = xhr.responseText.split("\n").filter(function(line) { return line.match(rx); });
-        // for (var i = 0; i < lines.length; ++i) {
-        //     var parsed = lines[i].split('|');
-        //     possibilities.push({ name:parsed[1], ref:parsed[0] });
-        // }
         if (possibilities.length > 1) {
             // Several possibilities, show a choice menu
             var popup = document.getElementById('woboq_popup');
-            if (!popup) {
-                popup = document.createElement('div');
-                popup.id = 'woboq_popup';
-                document.body.appendChild(popup);
-            }
-            var pos = getTooltipPos(event);
-
             var html = "<ul style='margin:0; padding:1em;'>";
             for(var i = 0; i < possibilities.length; ++i) {
                 // html += "<li data-ref='" + escapeHtml(possibilities[i].ref) + "'>"
@@ -413,8 +363,8 @@ document.addEventListener( 'mousemove', function (event) {
                 html += "<li><a href='" + url + "'>"+ possibilities[i].name+ "</a> ("+ project +" " +filename+")</li>";
             }
             html += "</ul>";
-
             popup.innerHTML = createPopupHtml(getTooltipPos(event), html);
+            resetPopupHideTimer();
         } else if (possibilities.length == 1) {
             //showRefPopup(possibilities[0].ref, getAbsolutePos(target.parentNode), fnName);
             var url = possibilities[0].url;
@@ -425,10 +375,9 @@ document.addEventListener( 'mousemove', function (event) {
     };
     xhr.send();
     currentXmlHttpRequest = xhr;
-
 }, false );
 
 window.addEventListener('hashchange', closePopup);
 
 
-})();
+});
