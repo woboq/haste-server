@@ -66,6 +66,62 @@ function escapeHtml(string) {
 //     return {top: top,left: left};
 // }
 
+    // demangle the function name, don't care about the template or the argument
+    function demangleFunctionName(mangle) {
+        if (! mangle) return mangle;
+        if (mangle[0] !== '_') return mangle;
+        if (mangle[1] === 'M' && mangle[2] === '/') return mangle.slice(3);
+        if (mangle[1] !== 'Z') return mangle;
+        mangle = mangle.slice(2);
+        var result;
+        var last = "";
+        var scoped = false;
+        do {
+            if (!result)
+                result = "";
+            else
+                result += "::";
+            if (mangle[0]==='D') {
+                result += "~" + last;
+                break;
+            }
+            if (mangle[0]==='C') {
+                result += last;
+                break;
+            }
+            if (mangle[0]==='N') {
+                mangle = mangle.slice(1);
+                scoped = true;
+            }
+            if (mangle[0]==='K') mangle = mangle.slice(1);
+            if (mangle[0]==='L') mangle = mangle.slice(1);
+            if (mangle.match(/^St/)) { //St
+                mangle = mangle.slice(2);
+                result += "std::";
+            }
+            if (mangle[0]==='I') {
+                var n = 1;
+                var i;
+                for (i = 1; i < mangle.length && n > 0 ;i++) {
+                    if (mangle[i] === 'I') n++;
+                    if (mangle[i] === 'E') n--;
+                }
+                mangle = mangle.slice(i);
+            }
+            if (mangle.match(/^[a-z]/)) {
+                result += "operator";
+                break;
+            }
+            var len = parseInt(mangle);
+            if (!len) return null;
+            var start = ("" + len).length;
+            last = mangle.substr(start, len);
+            result += last;
+            mangle = mangle.slice(start + len)
+        } while(mangle && mangle[0]!='E' && mangle[0]!='B' && scoped);
+        return result;
+    }
+
 
 function getTooltipPos(event) {
     return {top: event.clientY,left: event.clientX};
@@ -224,7 +280,7 @@ codeDiv.addEventListener( 'mousemove', function (event) {
 
         //text contents of hit element
         var text_nodes = hit_elem.contents().filter(function(){
-            return this.nodeType == Node.TEXT_NODE && this.nodeValue.match(/[a-zA-Z:_]{2,}/)
+            return this.nodeType == Node.TEXT_NODE && this.nodeValue.match(/[a-zA-Z:_0-9]{2,}/)
         });
         console.log(text_nodes);
 
@@ -234,7 +290,7 @@ codeDiv.addEventListener( 'mousemove', function (event) {
 
             //wrap every word in every node in a dom element
             text_nodes.replaceWith(function(i) {
-                return $(this).text().replace(/([a-zA-Z-:_]*)/g, "<word>$1</word>")
+                return $(this).text().replace(/([a-zA-Z-:_0-9]*)/g, "<word>$1</word>")
             });
             console.log(text_nodes);
 
@@ -260,13 +316,13 @@ codeDiv.addEventListener( 'mousemove', function (event) {
 
 
     // Ignore clicks on the popup
-    var parent = event.target;
-    if (!parent)return;
-    while (parent) {
-        if (parent.id === "woboq_popup")
-            return;
-        parent = parent.parentNode;
-    }
+    // var parent = event.target;
+    // if (!parent)return;
+    // while (parent) {
+    //     if (parent.id === "woboq_popup")
+    //         return;
+    //     parent = parent.parentNode;
+    // }
 
     // FIXME: Could be used to define a "client area" where we match
     //var selection = window.getSelection();
@@ -282,7 +338,7 @@ codeDiv.addEventListener( 'mousemove', function (event) {
     //     return closePopup();  // not part of the diff
 
     //var data = ""+target.data;
-    var data = hit_word;
+    //var data = hit_word;
     // if (data.length < 2)
     //     return closePopup(); // FIXME: Filter out int bool void etc
     // var begin = Math.min(selection.anchorOffset, selection.focusOffset);
@@ -294,7 +350,7 @@ codeDiv.addEventListener( 'mousemove', function (event) {
     //     end++;
 
     //var fnName = data.substr(begin, end-begin);
-    var fnName = data;
+    var fnName = demangleFunctionName(hit_word);
 
     // FIXME Maybe we don't need this
     //extend the selection to the begining of the token if it is in another html node

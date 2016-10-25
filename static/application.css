@@ -9,7 +9,7 @@ body {
 textarea {
 	background: transparent;
 	border: 0px;
-	color: #fff;
+	color: black;
 	padding: 0px;
 	width: 100%;
 	height: 100%;
@@ -121,7 +121,7 @@ textarea {
 }
 
 #box3 .label, #messages li {
-	color: #fff;
+	color: black;
 	font-weight: bold;
 }
 
