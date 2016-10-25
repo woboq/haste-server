@@ -1,10 +1,10 @@
 // ==UserScript==
-// @name           code.woboq.org integration into Qt's gerrit
+// @name           code.woboq.org integration into arbitrary websites
 // @description    Easy access to code.woboq.org from Qt's gerrit
-// @author         Olivier Goffart <ogoffart@woboq.com>
+// @author         Olivier Goffart <ogoffart@woboq.com>, Markus Goetz <markus@woboq.com>
 // @license        MIT
-// @match          https://codereview.qt-project.org/*
-// @include        https://codereview.qt-project.org/*
+// @match          *
+// @include        *
 // @grant          none
 // ==/UserScript==
 
@@ -12,8 +12,11 @@
 "use strict";
 
 // Config options
-var root_path = "https://code.woboq.org/qt5";
-var symbol_path = "https://code.woboq.org/data/symbol.html?root=../qt5&ref=";
+var root_path = "https://code.woboq.org/";
+var default_project = "qt5";
+var api_path = "https://code.woboq.org/api/";
+// FIXME how to make generic?
+var symbol_path = "https://code.woboq.org/data/symbol.html?root=../qt5&ref="; // FIXME
 
 //-----------------------------------------------------------------------------
 // Utility functions
@@ -62,11 +65,28 @@ function getAbsolutePos(elem) {
     return {top: top,left: left};
 }
 
+function getTooltipPos(event) {
+    return {top: event.clientY,left: event.clientX};
+}
+
 //-----------------------------------------------------------------------------
 // Popup
 
 var curentFnName = ""; // the fnName for which the popup is shown or that we are trying to load
 var currentXmlHttpRequest = null;
+
+
+function createPopupHtml(pos, content) {
+    return "<div style='"
+        +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
+        +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
+        +"max-width: 80%; box-shadow:1px 1px 7px gray; z-index:2;"
+        +"overflow-y:auto; max-height: 300px;"
+        +"position: fixed;"
+        +"top:" + (pos.top) + "px;"
+        +"left:"+ (pos.left) +"px;"
+        +"'>" + content + "</div>";
+}
 
 function closePopup() {
     curentFnName = "";
@@ -77,10 +97,13 @@ function closePopup() {
         popup.removeChild(popup.childNodes[0]);
 }
 
-function showRefPopup(ref, pos, fnName) {
+// FIXME: Would be better for latency if the search API function automatically returns the data
+// so one request could be avoided
+function showRefPopup(ref, pos, fnName, project) {
     curentFnName = fnName;
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', root_path + "/refs/" + ref);
+    project = project ? project : default_project;
+    xhr.open('GET', root_path + project + "/refs/" + ref);
     xhr.onload = function() {
         if (xhr.status !== 200)
             return;
@@ -105,7 +128,7 @@ function showRefPopup(ref, pos, fnName) {
                     type = n.getAttribute("type");
                 }
                 if (!url && n.hasAttribute("f")) {
-                    url = root_path + "/" + n.getAttribute("f") + ".html#" + ref;
+                    url = root_path + project + "/" + n.getAttribute("f") + ".html#" + ref;
                 }
             } else if (n.tagName === "use") {
                 useCount++;
@@ -119,33 +142,27 @@ function showRefPopup(ref, pos, fnName) {
                 popup.id = 'woboq_popup';
                 document.body.appendChild(popup);
             }
-            var html = "<div style='"
-                +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
-                +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
-                +"max-width: 80%; box-shadow:1px 1px 7px gray; z-index:2;"
-                +"position: absolute;"
-                +"top:" + (pos.top + 20) + "px;"
-                +"left:"+ pos.left +"px;"
-                +"'>";
 
+            var html = "";
             html += "<p style='color:#061'>" + escapeHtml(type) + "</p>";
             html += "<p><a style='color:#037' href='" + escapeHtml(url) + "'>Go to definition</a>";
 
             html += "<br /><a style='color:#037' href='" + escapeHtml(symbol_path + ref)
                 + "#uses'>Show uses (" + useCount + ")</a></p>";
-            html += "</div>";
-            popup.innerHTML = html;
+            popup.innerHTML = createPopupHtml(pos, html);
         }
     };
     xhr.send();
     currentXmlHttpRequest = xhr;
 }
 
+/*
 // hovering ofer 'elem' node that contains a path to 'file'
-function hoverFile(elem, file) {
+function hoverFile(elem, file, project) {
     elem.woboq_done = true;
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', root_path + "/fileIndex");
+    project = project ? project : default_project;
+    xhr.open('GET', root_path + project + "/fileIndex");
     xhr.onload = function() {
         var possible_files = [];
         if (xhr.status === 200) {
@@ -163,12 +180,13 @@ function hoverFile(elem, file) {
 //                + "background-position: right;"
 //                + "background-repeat: no-repeat;"
 //                + "padding-right: 20px;"
-                + "' href='" + root_path + "/"+ escapeHtml(possible_files[0]) +".html'>"
+                + "' href='" + root_path + project + "/"+ escapeHtml(possible_files[0]) +".html'>"
                 + elem.innerHTML + "</a>";
         }
     };
     xhr.send();
 }
+*/
 
 //helper regexp to find the def in the index
 var findDefRx = new RegExp("<def f='([^']*)' l='(\\d*)'(?: type='([^']*)')?[^/]*/>");
@@ -177,41 +195,49 @@ var findDefRx = new RegExp("<def f='([^']*)' l='(\\d*)'(?: type='([^']*)')?[^/]*
 document.addEventListener('mouseover', function (event) {
     if (event.target.woboq_done)
         return;
-    if (hasClass(event.target, 'diffTextFileHeader')) {
-        // Possile file name in a unified diff
-        var words = event.target.textContent.split(' ');
-        var file = "";
-        for (var i = 0; i < words.length; ++i) {
-            if (words[i].match(/^[ab]\/.*/))
-                file = words[i].substr(2).trim();
-        }
-        if (file.length > 0) {
-            hoverFile(event.target, file);
-        }
-    } else if (hasClass(event.target, 'diffFileName') || hasClass(event.target, 'gwt-InlineLabel')) {
-        // file name
-        hoverFile(event.target, event.target.textContent);
-    } else if (event.target.tagName === "LI" && event.target.hasAttribute("data-ref")) {
-        // Hovering over an entry in out popup: fetch from the index to add a link
-        var ref = event.target.getAttribute("data-ref");
-        var xhr = new XMLHttpRequest();
-        xhr.open('GET', root_path + "/refs/" + ref);
-        xhr.onload = function() {
-            if (xhr.status !== 200)
-                return;
-            var mx = xhr.responseText.match(findDefRx);
-            if (mx) {
-                var proj = root_path.replace(/^.*\/([^\/]*)/, "$1");
-                var url = root_path + "/" + escapeHtml(mx[1]) + ".html#" + ref;
-                var html = "<a style='color:inherit' href='" + url + "'";
-                if (mx[3]) // mx[3] is already xml escaped, but re-do the escaping in case it's not
-                    html += " title='" + escapeHtml(unescapeHtml(mx[3])) + "'";
-                html += ">" + event.target.innerHTML + "</a>";
-                event.target.innerHTML = html;
-            }
-        };
-        xhr.send();
-    }
+
+    // if (hasClass(event.target, 'diffTextFileHeader')) {
+    //     // Possile file name in a unified diff
+    //     var words = event.target.textContent.split(' ');
+    //     var file = "";
+    //     for (var i = 0; i < words.length; ++i) {
+    //         if (words[i].match(/^[ab]\/.*/))
+    //             file = words[i].substr(2).trim();
+    //     }
+    //     if (file.length > 0) {
+    //         hoverFile(event.target, file);
+    //     }
+    // } else if (hasClass(event.target, 'diffFileName') || hasClass(event.target, 'gwt-InlineLabel')) {
+    //     // file name
+    //     hoverFile(event.target, event.target.textContent);
+    // } else
+    //
+
+    // FIXME: i don't think we do this anymore
+    // if (event.target.tagName === "LI" && event.target.hasAttribute("data-ref")) {
+    //     console.log("HOVER OVER ENTRY IN OUR POPUP");
+    //     // Hovering over an entry in out popup: fetch from the index to add a link
+    //     var ref = event.target.getAttribute("data-ref");
+    //     var xhr = new XMLHttpRequest();
+    //     var project = project ? project : default_project;
+    //     var path =
+    //     xhr.open('GET', root_path + project + "/refs/" + ref);
+    //     xhr.onload = function() {
+    //         if (xhr.status !== 200)
+    //             return;
+    //         var mx = xhr.responseText.match(findDefRx);
+    //         if (mx) {
+    //             var proj = root_path.replace(/^.*\/([^\/]*)/, "$1");
+    //             var url = root_path + "/" + escapeHtml(mx[1]) + ".html#" + ref;
+    //             var html = "<a style='color:inherit' href='" + url + "'";
+    //             if (mx[3]) // mx[3] is already xml escaped, but re-do the escaping in case it's not
+    //                 html += " title='" + escapeHtml(unescapeHtml(mx[3])) + "'";
+    //             html += ">" + event.target.innerHTML + "</a>";
+    //             event.target.innerHTML = html;
+    //         }
+    //     };
+    //     xhr.send();
+    // }
 }, false );
 
 
@@ -221,9 +247,15 @@ var woboq_previousMouseMove = "";
 document.addEventListener( 'mousemove', function (event) {
     if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
         return;
+    if (event.target.woboq_done)
+        return;
+
     woboq_previousMouseMove = event.target;
     console.log("MOVE LISTENER ->" + event.target.tagName);
+    console.log("WORD LISTENER ->" + event.screenX);
+    console.log("WORD LISTENER ->" + event.clientX);
 
+    // FIXME: Maybe try http://stackoverflow.com/a/30606508/2941 instead
     function getHitWord(hit_elem) {
         var hit_word = '';
         hit_elem = $(hit_elem);
@@ -274,6 +306,7 @@ document.addEventListener( 'mousemove', function (event) {
         parent = parent.parentNode;
     }
 
+    // FIXME: Could be used to define a "client area" where we match
     //var selection = window.getSelection();
     //var target = selection.anchorNode;
     //if (target !== selection.focusNode)
@@ -288,8 +321,8 @@ document.addEventListener( 'mousemove', function (event) {
 
     //var data = ""+target.data;
     var data = hit_word;
-    if (data.length < 2)
-        return closePopup();
+    // if (data.length < 2)
+    //     return closePopup(); // FIXME: Filter out int bool void etc
     // var begin = Math.min(selection.anchorOffset, selection.focusOffset);
     // var end = Math.max(selection.anchorOffset, selection.focusOffset);
     // // extend the selection to the beginning of the token
@@ -301,6 +334,7 @@ document.addEventListener( 'mousemove', function (event) {
     //var fnName = data.substr(begin, end-begin);
     var fnName = data;
 
+    // FIXME Maybe we don't need this
     //extend the selection to the begining of the token if it is in another html node
     // var node = target.parentNode.previousSibling;
     // if (!node) node = target.parentNode.parentNode.previousSibling;
@@ -332,18 +366,19 @@ document.addEventListener( 'mousemove', function (event) {
     if (fnName === curentFnName) {
         return; // popup already there
     } else {
-        closePopup();
+        //closePopup();
     }
 
     if (fnName.match(/[^a-zA-Z0-9_:]/))
         return;
 
-    var k = getFnNameKey(fnName);
-    if (!k)
-        return;
+    // var k = getFnNameKey(fnName);
+    // if (!k)
+    //     return;
+    var k = fnName;
     curentFnName = fnName;
     var xhr = new XMLHttpRequest();
-    xhr.open('GET', root_path + "/fnSearch/" + k);
+    xhr.open('GET', api_path + "/fn/" + k);
     xhr.onload = function() {
         if (curentFnName !== fnName)
             return;
@@ -351,13 +386,13 @@ document.addEventListener( 'mousemove', function (event) {
         if (xhr.status !== 200)
             return;
 
-        var possibilities = [];
-        var rx = new RegExp("(\\||::)"+ escapeRegExp(fnName) + "(\\(|$)", '');
-        var lines = xhr.responseText.split("\n").filter(function(line) { return line.match(rx); });
-        for (var i = 0; i < lines.length; ++i) {
-            var parsed = lines[i].split('|');
-            possibilities.push({ name:parsed[1], ref:parsed[0] });
-        }
+        var possibilities = JSON.parse(xhr.response);
+        // var rx = new RegExp("(\\||::)"+ escapeRegExp(fnName) + "(\\(|$)", '');
+        // var lines = xhr.responseText.split("\n").filter(function(line) { return line.match(rx); });
+        // for (var i = 0; i < lines.length; ++i) {
+        //     var parsed = lines[i].split('|');
+        //     possibilities.push({ name:parsed[1], ref:parsed[0] });
+        // }
         if (possibilities.length > 1) {
             // Several possibilities, show a choice menu
             var popup = document.getElementById('woboq_popup');
@@ -366,27 +401,26 @@ document.addEventListener( 'mousemove', function (event) {
                 popup.id = 'woboq_popup';
                 document.body.appendChild(popup);
             }
-            //var pos = getAbsolutePos(target.parentNode);
-            var pos = getAbsolutePos(woboq_previousMouseMove.parentNode);
-            var html = "<div style='"
-                +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
-                +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
-                +"max-width: 80%; box-shadow:1px 1px 7px gray; z-index:2;"
-                +"overflow-y:auto; max-height: 300px;"
-                +"position: absolute;"
-                +"top:" + (pos.top + 20) + "px;"
-                +"left:"+ pos.left +"px;"
-                +"'><ul style='margin:0; padding:0'>";
+            var pos = getTooltipPos(event);
 
+            var html = "<ul style='margin:0; padding:1em;'>";
             for(var i = 0; i < possibilities.length; ++i) {
-                html += "<li data-ref='" + escapeHtml(possibilities[i].ref) + "'>"
-                    + escapeHtml(possibilities[i].name) +"</i>";
+                // html += "<li data-ref='" + escapeHtml(possibilities[i].ref) + "'>"
+                //     + escapeHtml(possibilities[i].name) +"</i>";
+                url = possibilities[i].url;
+                var project = url.replace(/^.*\/\/.*?\/(.*?)\/.*/, "$1"); // FIXME: This won't work for other structures than code.woboq.org/$PROJECT
+                var filename = url.replace(/^.*\/([^\/]*)#.*$/, "$1");
+                html += "<li><a href='" + url + "'>"+ possibilities[i].name+ "</a> ("+ project +" " +filename+")</li>";
             }
-            html += "</ul></div>";
-            popup.innerHTML = html;
+            html += "</ul>";
+
+            popup.innerHTML = createPopupHtml(getTooltipPos(event), html);
         } else if (possibilities.length == 1) {
             //showRefPopup(possibilities[0].ref, getAbsolutePos(target.parentNode), fnName);
-            showRefPopup(possibilities[0].ref, getAbsolutePos(woboq_previousMouseMove.parentNode), fnName);
+            var url = possibilities[0].url;
+            var ref = url.replace(/^.*#(.*)$/, "$1");
+            var project = url.replace(/^.*\/\/.*?\/(.*?)\/.*/, "$1"); // FIXME: This won't work for other structures than code.woboq.org/$PROJECT
+            showRefPopup(ref, getTooltipPos(event), fnName, project);
         }
     };
     xhr.send();

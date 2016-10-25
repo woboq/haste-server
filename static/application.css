@@ -1,5 +1,5 @@
 body {
-	background: #002B36;
+	background: white;
 	padding: 20px 50px;
 	margin: 0px;
 }
@@ -63,20 +63,20 @@ textarea {
 #box1 {
 	padding: 5px;
 	text-align: center;
-	background: #00222b;
+	background: white;
 }
 
 #box2 {
-	background: #08323c;
+	background: white;
 	font-size: 0px;
 	padding: 0px 5px;
 }
 
 #box1 a.logo, #box1 a.logo:visited {
 	display: inline-block;
-	background: url(logo.png);
+	background: url(https://code.woboq.org/data/woboq-48.png);
 	width: 126px;
-	height: 42px;
+	height: 48px;
 }
 
 #box1 a.logo:hover {
@@ -113,7 +113,7 @@ textarea {
 }
 
 #box3, #messages li {
-	background: #173e48;
+	background: white;
 	font-family: Helvetica, sans-serif;
 	font-size: 12px;
 	line-height: 14px;
