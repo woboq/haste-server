@@ -42,7 +42,7 @@ textarea {
 	border: 0px;
 	outline: none;
 	font-size: 13px;
-	padding-right: 360px;
+	/*padding-right: 360px;*/
   overflow: inherit;
 }
 
@@ -67,7 +67,7 @@ textarea {
 }
 
 #box2 {
-	background: white;
+	background: black;
 	font-size: 0px;
 	padding: 0px 5px;
 }
