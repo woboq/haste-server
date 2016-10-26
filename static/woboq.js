@@ -397,6 +397,8 @@ codeDiv.addEventListener( 'mousemove', function (event) {
     // FIXME decompose
     if (fnName.match(/[^a-zA-Z0-9_:]/))
         return;
+    if (!fnName || fnName == "")
+        return;
 
     // var k = getFnNameKey(fnName);
     // if (!k)

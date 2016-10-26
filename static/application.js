@@ -27,7 +27,8 @@ haste_document.prototype.load = function(key, callback, lang) {
         var high;
         if (1) {
           lang = "cpp";
-          high = hljs.highlight(lang, res.data);
+          var unformatted = res.data;
+          high = hljs.highlight(lang, unformatted);
           console.log("DID CPP", high, res.data);
         } else
         if (lang === 'txt') {
