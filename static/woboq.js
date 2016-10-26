@@ -274,8 +274,8 @@ function hoverFile(elem, file, project) {
 
 var woboq_previousMouseMove = "";
 codeDiv.addEventListener( 'mousemove', function (event) {
-    if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
-        return;
+    //if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
+    //    return;
     if (event.target.woboq_done)
         return;
 
@@ -404,24 +404,30 @@ codeDiv.addEventListener( 'mousemove', function (event) {
             i = offset,
             begin,
             end;
+        if (!data)
+            return "";
 
         function isBoundary(char) {
             return char==" "||char=="\n"||char=="("||char==")"||char=="}"
                 ||char=="{"||char=="."||char=="-"||char==">"||char=="<"
                 ||char=="*"||char==";"||char=="/"||char=="}";
         }
-
+        function isSymbol(char) {
+            if (char == null)return false;
+            return char.match(/[a-zA-Z:_0-9]/);
+        }
+//console.log("TEXT NODE DATA", data);
         //Find the begin of the word (space)
-        while (i > 0 && !isBoundary(data[i])) { --i; };
-        begin = ++i;
+        while (i > 0 && isSymbol(data[i])) { --i; };
+        begin = i;
 
         //Find the end of the word
         i = offset;
-        while (i < data.length && !isBoundary(data[i])) { ++i; };
+        while (i < data.length && isSymbol(data[i])) { ++i; };
         end = i;
 
         //Return the word under the mouse cursor
-        return data.substring(begin, end);
+        return data.substring(begin, end).trim();
     }
 
     //Get the HTML in a div #hoverText and detect mouse move on it
