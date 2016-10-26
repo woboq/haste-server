@@ -158,7 +158,7 @@ haste.prototype.newDocument = function(hideHistory) {
   }
   this.setTitle();
   this.lightKey();
-  this.$textarea.val('Paste a C/C++ stacktrace or code, then press the 💾 Save icon on the bottom right').show('fast', function() {
+  this.$textarea.val('Paste a C/C++ stacktrace or code, then press the 💾 Save icon on the bottom right\n\nNote that this is NOT the Woboq Code Browser, so it cannot do the full tooltip functionality.').show('fast', function() {
     this.select();
     this.focus();
   });

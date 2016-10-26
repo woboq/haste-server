@@ -125,6 +125,7 @@ function escapeHtml(string) {
 
 function getTooltipPos(event) {
     return {top: event.clientY,left: event.clientX};
+    //return {top: event.screenY,left: event.screenX};
 }
 
 
@@ -161,12 +162,13 @@ popup.addEventListener( 'mouseenter', function (event) {
 
 
     function createPopupHtml(pos, content) {
+        console.log(pos.top);
     return "<div style='"
         +"padding:1em; padding-top:1ex; border: 1px solid gray; background-color: white;"
         +"font-size: smaller; opacity: 0.9; border-radius: 4px;"
         +"max-width: 80%; box-shadow:1px 1px 7px gray; z-index:2;"
         +"overflow-y:auto; max-height: 300px;"
-        +"position: absolute;"
+        +"position: fixed;"
         +"top:" + (pos.top) + "px;"
         +"left:"+ (pos.left) +"px;"
         +"'>" + content + "</div>";
