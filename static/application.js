@@ -120,7 +120,7 @@ haste.prototype.showMessage = function(msg, cls) {
   $('#messages').prepend(msgBox);
   setTimeout(function() {
     msgBox.slideUp('fast', function() { $(this).remove(); });
-  }, 3000);
+  }, 10*1000);
 };
 
 // Show the light key
@@ -158,10 +158,13 @@ haste.prototype.newDocument = function(hideHistory) {
   }
   this.setTitle();
   this.lightKey();
-  this.$textarea.val('Paste a C/C++ stacktrace or code, then press the 💾 Save icon on the bottom right\n\nNote that this is NOT the Woboq Code Browser, so it cannot do the full tooltip functionality.').show('fast', function() {
+  this.$textarea.val('').show('fast', function() {
     this.select();
     this.focus();
-  });
+
+    });
+  //this.showMessage('Paste a C/C++ stacktrace or code, then press the 💾 Save icon on the bottom right\n\nNote that this is NOT the Woboq Code Browser, so it cannot do the full tooltip functionality.');
+  $("#woboqhelp").show();
   this.removeLineNumbers();
 };
 
@@ -243,6 +246,8 @@ haste.prototype.duplicateDocument = function() {
 // Lock the current document
 haste.prototype.lockDocument = function() {
   var _this = this;
+  $("#woboqhelp").hide();
+
   this.doc.save(this.$textarea.val(), function(err, ret) {
     if (err) {
       _this.showMessage(err.message, 'error');
