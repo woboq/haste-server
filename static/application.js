@@ -25,6 +25,11 @@ haste_document.prototype.load = function(key, callback, lang) {
       _this.data = res.data;
       try {
         var high;
+        if (1) {
+          lang = "cpp";
+          high = hljs.highlight(lang, res.data);
+          console.log("DID CPP", high, res.data);
+        } else
         if (lang === 'txt') {
           high = { value: _this.htmlEscape(res.data) };
         }
@@ -41,7 +46,7 @@ haste_document.prototype.load = function(key, callback, lang) {
       callback({
         value: high.value,
         key: key,
-        language: high.language || lang,
+        language: lang,
         lineCount: res.data.split("\n").length
       });
     },
@@ -66,11 +71,11 @@ haste_document.prototype.save = function(data, callback) {
     success: function(res) {
       _this.locked = true;
       _this.key = res.key;
-      var high = hljs.highlightAuto(data);
+      var high = hljs.highlight("cpp",data);
       callback(null, {
         value: high.value,
         key: res.key,
-        language: high.language,
+        language: "cpp",
         lineCount: data.split("\n").length
       });
     },
@@ -152,7 +157,8 @@ haste.prototype.newDocument = function(hideHistory) {
   }
   this.setTitle();
   this.lightKey();
-  this.$textarea.val('').show('fast', function() {
+  this.$textarea.val('Paste a C/C++ stacktrace or code, then press the 💾 Save icon on the bottom right').show('fast', function() {
+    this.select();
     this.focus();
   });
   this.removeLineNumbers();
@@ -244,9 +250,10 @@ haste.prototype.lockDocument = function() {
       _this.$code.html(ret.value);
       _this.setTitle(ret.key);
       var file = '/' + ret.key;
-      if (ret.language) {
-        file += '.' + _this.lookupExtensionByType(ret.language);
-      }
+      //if (ret.language) {
+      //  file += '.' + _this.lookupExtensionByType(ret.language);
+      //}
+      file += '.' + "cpp";
       window.history.pushState(null, _this.appName + '-' + ret.key, file);
       _this.fullKey();
       _this.$textarea.val('').hide();
