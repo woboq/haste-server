@@ -273,7 +273,7 @@ function hoverFile(elem, file, project) {
 
 
 var woboq_previousMouseMove = "";
-codeDiv.addEventListener( 'mousemove', function (event) {
+function tooltipfunc (event) {
     //if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
     //    return;
     if (event.target.woboq_done)
@@ -562,7 +562,11 @@ codeDiv.addEventListener( 'mousemove', function (event) {
     };
     xhr.send();
     currentXmlHttpRequest = xhr;
-}, false );
+};
+
+codeDiv.addEventListener( 'mousemove', tooltipfunc, false );
+codeDiv.addEventListener( 'click', tooltipfunc, false );
+
 
 window.addEventListener('hashchange', closePopup);
 
