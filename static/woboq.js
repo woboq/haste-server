@@ -555,6 +555,11 @@ function tooltipfunc (event) {
             var ref = url.replace(/^.*#(.*)$/, "$1");
             var project = url.replace(/^.*\/\/.*?\/(.*?)\/.*/, "$1"); // FIXME: This won't work for other structures than code.woboq.org/$PROJECT
             showRefPopup(ref, getTooltipPos(event), fnName, project, type, url);
+        } else {
+            var popup = document.getElementById('woboq_popup');
+            popup.innerHTML = createPopupHtml(getTooltipPos(event),
+                "Not a function symbol with body on code.woboq.org: "+curentFnName);
+            resetPopupHideTimer();
         }
     };
     xhr.send();
