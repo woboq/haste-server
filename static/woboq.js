@@ -133,7 +133,6 @@ function getTooltipPos(event) {
 // Popup
 
 var curentFnName = ""; // the fnName for which the popup is shown or that we are trying to load
-var currentXmlHttpRequest = null;
 
 
 var popup = document.getElementById('woboq_popup');
@@ -176,17 +175,26 @@ popup.addEventListener( 'mouseenter', function (event) {
 
 function closePopup() {
     curentFnName = "";
-    //if (currentXmlHttpRequest)
-    //    currentXmlHttpRequest.abort(); // FIXME shall we really? isn't it better to cache?
     var popup = document.getElementById('woboq_popup');
     if (popup && popup.hasChildNodes())
         popup.removeChild(popup.childNodes[0]);
 }
 
-// FIXME: Would be better for latency if the search API function automatically returns the data
 // so one request could be avoided
-function showRefPopup(ref, pos, fnName, project) {
+function showRefPopup(ref, pos, fnName, project, type, url) {
     curentFnName = fnName;
+
+    // We haven't loaded the ref yet, but we can already show a popover with some info from the search function
+    if (url && type) {
+        var popup = document.getElementById('woboq_popup');
+        var html = "";
+        html += "<p style='color:#061'>" + escapeHtml(type) + "</p>";
+        html += "<p><a style='color:#037' href='" + escapeHtml(url) + "'>Go to definition</a>";
+        popup.innerHTML = createPopupHtml(pos, html);
+        resetPopupHideTimer();
+    }
+
+// FIXME: Would be better for latency if the search API function automatically returns ALL the data
     var xhr = new XMLHttpRequest();
     project = project ? project : default_project;
     xhr.open('GET', root_path + project + "/refs/" + ref);
@@ -201,10 +209,8 @@ function showRefPopup(ref, pos, fnName, project) {
             return;
 
         var type = "";
-        var url = "";
         var defList = [];
         var useCount = 0;
-
         var nodes = xml.childNodes[0].childNodes;
         for (var i = 0; i < nodes.length; ++i) {
             var n = nodes[i];
@@ -212,9 +218,6 @@ function showRefPopup(ref, pos, fnName, project) {
             if (n.tagName === "def") {
                 if (!type && n.hasAttribute("type")) {
                     type = n.getAttribute("type");
-                }
-                if (!url && n.hasAttribute("f")) {
-                    url = root_path + project + "/" + n.getAttribute("f") + ".html#" + ref;
                 }
             } else if (n.tagName === "use") {
                 useCount++;
@@ -234,7 +237,6 @@ function showRefPopup(ref, pos, fnName, project) {
         }
     };
     xhr.send();
-    currentXmlHttpRequest = xhr;
 }
 
 /*
@@ -272,14 +274,8 @@ function hoverFile(elem, file, project) {
 
 
 
-var woboq_previousMouseMove = "";
 function tooltipfunc (event) {
-    //if (event.target.tagName == "body" || event.target == woboq_previousMouseMove)
-    //    return;
-    if (event.target.woboq_done)
-        return;
 
-    woboq_previousMouseMove = event.target;
     //console.log("MOVE LISTENER ->" + event.target.tagName);
     //console.log("WORD LISTENER ->" + event.screenX);
     //console.log("WORD LISTENER ->" + event.clientX);
@@ -555,13 +551,13 @@ function tooltipfunc (event) {
         } else if (possibilities.length == 1) {
             //showRefPopup(possibilities[0].ref, getAbsolutePos(target.parentNode), fnName);
             var url = possibilities[0].url;
+            var type = possibilities[0].type;
             var ref = url.replace(/^.*#(.*)$/, "$1");
             var project = url.replace(/^.*\/\/.*?\/(.*?)\/.*/, "$1"); // FIXME: This won't work for other structures than code.woboq.org/$PROJECT
-            showRefPopup(ref, getTooltipPos(event), fnName, project);
+            showRefPopup(ref, getTooltipPos(event), fnName, project, type, url);
         }
     };
     xhr.send();
-    currentXmlHttpRequest = xhr;
 };
 
 codeDiv.addEventListener( 'mousemove', tooltipfunc, false );
