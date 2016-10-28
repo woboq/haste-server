@@ -826,7 +826,7 @@
     return hljs;
 }));
 
-hljs.registerLanguage("cppDEACT", function(){
+hljs.registerLanguage("cpp", function(){
     var CPP_PRIMITIVE_TYPES = {
         className: 'keyword',
         begin: '\\b[a-z\\d_]*_t\\b'

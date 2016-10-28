@@ -368,8 +368,10 @@ function tooltipfunc (event) {
 
         return boundaryPosition;
     }
+    var textNode,            begin,
+        end;;
     function getWordUnderCursor(event) {
-        var range, textNode, offset;
+        var range, offset;
 
         if (document.body.createTextRange) {           // Internet Explorer
             try {
@@ -397,9 +399,7 @@ function tooltipfunc (event) {
         //data contains a full sentence
         //offset represent the cursor position in this sentence
         var data = textNode.data,
-            i = offset,
-            begin,
-            end;
+            i = offset;
         if (!data)
             return "";
 
@@ -440,74 +440,53 @@ function tooltipfunc (event) {
     var hit_word = getWordUnderCursor(event);
     console.log("WORD LISTENER ->" + hit_word);
 
-
-    // Ignore clicks on the popup
-    // var parent = event.target;
-    // if (!parent)return;
-    // while (parent) {
-    //     if (parent.id === "woboq_popup")
-    //         return;
-    //     parent = parent.parentNode;
-    // }
-
-    // FIXME: Could be used to define a "client area" where we match
-    //var selection = window.getSelection();
-    //var target = selection.anchorNode;
-    //if (target !== selection.focusNode)
-    //    return closePopup();  // only do the matching if the selection is in one line
-    // if (!hasClass( target.parentNode, 'diffText')
-    //         && !hasClass( target.parentNode.parentNode, 'diffText')
-    //         && !hasClass( target.parentNode.parentNode.parentNode, 'diffText')
-    //         && !hasClass( target.parentNode, 'fileLine')
-    //         && !hasClass( target.parentNode.parentNode, 'fileLine')
-    //         && !hasClass( target.parentNode.parentNode.parentNode, 'fileLine'))
-    //     return closePopup();  // not part of the diff
-
-    //var data = ""+target.data;
-    //var data = hit_word;
-    // if (data.length < 2)
-    //     return closePopup(); // FIXME: Filter out int bool void etc
-    // var begin = Math.min(selection.anchorOffset, selection.focusOffset);
-    // var end = Math.max(selection.anchorOffset, selection.focusOffset);
-    // // extend the selection to the beginning of the token
-    // while(begin > 0 && data[begin-1].match((/[a-zA-Z0-9_:]/)))
-    //     begin--;
-    // while(end < data.length && data[end].match((/[a-zA-Z0-9_:]/)))
-    //     end++;
-
-    //var fnName = data.substr(begin, end-begin);
     var fnName = demangleFunctionName(hit_word);
+    if (!fnName)
+        return;
 
-    // FIXME Maybe we don't need this
+    var data =fnName;
+    var target = textNode;
     //extend the selection to the begining of the token if it is in another html node
-    // var node = target.parentNode.previousSibling;
-    // if (!node) node = target.parentNode.parentNode.previousSibling;
-    // while (begin === 0 && node) {
-    //     data = node.innerText;
-    //     if (!data)
-    //         break;
-    //     begin = data.length;
-    //     while(begin > 0 && data[begin-1].match((/[a-zA-Z0-9_:]/)))
-    //         begin--;
-    //     fnName = data.substr(begin) + fnName;
-    //     node = node.previousSibling;
-    // }
+    var node = target.previousSibling;
+    if (!node) node = target.parentNode.previousSibling;
+    if (!node) node = target.parentNode.parentNode.previousSibling;
+    if (!node || begin !== 0)
+        console.log(begin);
+
+    while (begin === 0 && node) {
+        data = node.innerText;
+        if (!data)
+            data = node.nodeValue;
+        if (!data)
+            break;
+        begin = data.length;
+        //while(begin > 0 && data[begin-1].match((/[a-zA-Z0-9_:]/)))
+        while(begin > 0 && data[begin-1].match((/[a-zA-Z_:]/)))
+            begin--;
+        fnName = data.substr(begin) + fnName;
+        node = node.previousSibling;
+    }
     //and to the end
-    // node = target.parentNode.nextSibling;
-    // if (!node) node = target.parentNode.parentNode.nextSibling;
-    // data = ""+target.data;
-    // while (end === data.length && node) {
-    //     data = node.innerText;
-    //     if (!data)
-    //         break;
-    //     end = 0;
-    //     while(end < data.length && data[end].match((/[a-zA-Z0-9_:]/)))
-    //         end++;
-    //     fnName = fnName + data.substr(0, end);
-    //     node = node.nextSibling;
-    // }
+    node = target.nextSibling;
+    if (!node) node = target.parentNode.nextSibling;
+    if (!node) node = target.parentNode.parentNode.nextSibling;
+    data = ""+target.data;
+    while (end === data.length && node) {
+        data = node.innerText;
+        if (!data)
+            data = node.nodeValue;
+        if (!data)
+            break;
+        end = 0;
+        while(end < data.length && data[end].match((/[a-zA-Z0-9_:]/)))
+            end++;
+        fnName = fnName + data.substr(0, end);
+        node = node.nextSibling;
+    }
+    console.log("Complete name: " + fnName);
 
     if (fnName === curentFnName) {
+        resetPopupHideTimer();
         return; // popup already there
     } else {
         //closePopup();
@@ -518,9 +497,6 @@ function tooltipfunc (event) {
     if (!fnName || fnName == "")
         return;
 
-    // var k = getFnNameKey(fnName);
-    // if (!k)
-    //     return;
     var k = fnName;
     curentFnName = fnName;
     var xhr = new XMLHttpRequest();
