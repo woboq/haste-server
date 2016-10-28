@@ -403,23 +403,18 @@ function tooltipfunc (event) {
         if (!data)
             return "";
 
-        function isBoundary(char) {
-            return char==" "||char=="\n"||char=="("||char==")"||char=="}"
-                ||char=="{"||char=="."||char=="-"||char==">"||char=="<"
-                ||char=="*"||char==";"||char=="/"||char=="}";
-        }
         function isSymbol(char) {
             if (char == null)return false;
             return char.match(/[a-zA-Z:_0-9]/);
         }
 //console.log("TEXT NODE DATA", data);
         //Find the begin of the word (space)
-        while (i > 0 && isSymbol(data[i])) { --i; };
-        begin = i;
+        while (i >= 0 && isSymbol(data[i])) { --i; /*console.log(i + " " + data.substring(i,offset).trim());*/};
+        begin = i+1;
 
         //Find the end of the word
         i = offset;
-        while (i < data.length && isSymbol(data[i])) { ++i; };
+        while (i < data.length && isSymbol(data[i])) { ++i; /*console.log(data.substring(begin,i).trim());*/ };
         end = i;
 
         //Return the word under the mouse cursor
